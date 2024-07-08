@@ -62,7 +62,7 @@ class TestService {
       console.log('Image file uploaded to S3:', imageUrl);
 
       const base64Image = imageBuffer.toString('base64');
-      const userPrompt = `Мне нравится наруто и футбол особенно футбольный клуб Барселона`;
+      const userPrompt = `Мне нравится аниме One Piece и игра бравл старс`;
 
       const response = await openai.chat.completions.create({
         model: 'gpt-4o',
