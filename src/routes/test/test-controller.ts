@@ -1,113 +1,194 @@
 import { Request, Response } from 'express';
 import TestService from './test-service';
+import User from '../auth/models/User';
 
-class TestController {
+class CourseController {
   private testService: TestService;
 
   constructor(testService: TestService) {
     this.testService = testService;
   }
 
-  createTest = async (req: Request, res: Response): Promise<void> => {
+  createCourse = async (req: Request, res: Response): Promise<void> => {
     try {
-      const testData = req.body;
+      const courseData = req.body;
       const files = req.files as { [fieldname: string]: Express.Multer.File[] };
-
-      const testFile = files['material'] ? files['material'][0] : null;
-
-      console.log('Received test data:', testData);
-      console.log('Received test file:', testFile);
-
-      if (!testFile) {
-        res.status(400).json({ message: 'Test file is required' });
+      const token = req.body.token;
+      const user_interest = req.body.user_interest;
+  
+      const courseFile = files['material'] ? files['material'][0] : null;
+  
+      if (!courseFile) {
+        res.status(400).json({ message: 'Course file is required' });
         return;
       }
-
-      const newTest = await this.testService.createTest(
-        testData,
-        testFile.buffer,
-        testFile.originalname
+  
+      const newCourse = await this.testService.createCourse(
+        courseData,
+        token,
+        user_interest,
+        courseFile.buffer,
+        courseFile.originalname
       );
-
-      res.status(201).json(newTest);
+      
+      res.status(201).json(newCourse);
     } catch (error) {
-      console.error('Error creating test:', error);
-      res.status(500).json({ message: 'Error creating test', error });
+      console.error('Error creating course:', error);
+      res.status(500).json({ message: 'Error creating course', error });
     }
   };
-
-  getTest = async (req: Request, res: Response): Promise<void> => {
+  getCourse = async (req: Request, res: Response): Promise<void> => {
     try {
       const { id } = req.params;
-      console.log(`Fetching test with id: ${id}`);
-      const test = await this.testService.getTest(id);
+      console.log(`Fetching course with id: ${id}`);
+      const course = await this.testService.getCourse(id);
 
-      if (test) {
-        res.status(200).json(test);
+      if (course) {
+        res.status(200).json(course);
       } else {
-        res.status(404).json({ message: 'Test not found' });
+        res.status(404).json({ message: 'Course not found' });
       }
     } catch (err) {
-      console.error('Error getting test:', err);
-      res.status(500).json({ message: 'Error getting test', error: err });
+      console.error('Error getting course:', err);
+      res.status(500).json({ message: 'Error getting course', error: err });
     }
   };
 
-  getAllTests = async (req: Request, res: Response): Promise<void> => {
+  getTopicId = async (req: Request, res: Response): Promise<void> => {
     try {
-      console.log('Fetching all tests');
-      const tests = await this.testService.getAllTests();
-      res.status(200).json(tests);
+      const { id: id } = req.params;
+      console.log(`Fetching course with id: ${id}`);
+      const course = await this.testService.getTopicId(id);
+
+      if (course) {
+        res.status(200).json(course);
+      } else {
+        res.status(404).json({ message: 'Course not found' });
+      }
     } catch (err) {
-      console.error('Error getting tests:', err);
-      res.status(500).json({ message: 'Error getting tests', error: err });
+      console.error('Error getting course:', err);
+      res.status(500).json({ message: 'Error getting course', error: err });
     }
   };
 
-  updateTest = async (req: Request, res: Response): Promise<void> => {
+
+  getTopic = async (req: Request, res: Response): Promise<void> => {
+    try {
+      console.log(req.params);
+
+      // const old = 'http://localhost:8080/api/course/id1/id2'
+      // const new = 'http://localhost:8080/api/course/id={123}&id2={0123}'
+
+      const { id: id_of_course, internalId: id_of_topic } = req.params;
+      console.log(`Fetching course with id: ${id_of_course}`);
+      const course = await this.testService.getTopic(id_of_course, id_of_topic);
+
+      if (course) {
+        res.status(200).json(course);
+      } else {
+        res.status(404).json({ message: 'Course not found' });
+      }
+    } catch (err) {
+      console.error('Error getting course:', err);
+      res.status(500).json({ message: 'Error getting course', error: err });
+    }
+  };
+
+
+  userCourses = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { token } = req.body;
+
+      const course = await this.testService.userCourses(token);
+
+      if (course) {
+        res.status(200).json(course);
+      } else {
+        res.status(404).json({ message: 'Course not found' });
+      }
+    } catch (err) {
+      console.error('Error getting course:', err);
+      res.status(500).json({ message: 'Error getting course', error: err });
+    }
+  };
+
+  completeTopic = async (req: Request, res: Response): Promise<void> => {
+    try {
+      console.log(req.params);
+
+      // const old = 'http://localhost:8080/api/course/id1/id2'
+      // const new = 'http://localhost:8080/api/course/id={123}&id2={0123}'
+
+      const { id: id_of_course, internalId: id_of_topic } = req.params;
+      console.log(`Fetching course with id: ${id_of_course}`);
+      const course = await this.testService.completeTopic(id_of_course, id_of_topic);
+
+      if (course) {
+        res.status(200).json(course);
+      } else {
+        res.status(404).json({ message: 'Course not found' });
+      }
+    } catch (err) {
+      console.error('Error getting course:', err);
+      res.status(500).json({ message: 'Error getting course', error: err });
+    }
+  };
+
+  getAllCourses = async (req: Request, res: Response): Promise<void> => {
+    try {
+      console.log('Fetching all courses');
+      const courses = await this.testService.getAllCourses();
+      res.status(200).json(courses);
+    } catch (err) {
+      console.error('Error getting courses:', err);
+      res.status(500).json({ message: 'Error getting courses', error: err });
+    }
+  };
+
+  // updateCourse = async (req: Request, res: Response): Promise<void> => {
+  //   try {
+  //     const { id } = req.params;
+  //     const courseUpdate = req.body;
+  //     const files = req.files as { [fieldname: string]: Express.Multer.File[] };
+
+  //     const courseFile = files['material'] ? files['material'][0] : null;
+
+  //     console.log('Received course update data:', courseUpdate);
+  //     console.log('Received course file:', courseFile);
+
+  //     const updatedCourse = await this.testService.updateCourse(
+  //       id,
+  //       courseUpdate,
+  //       courseFile ? courseFile.buffer : undefined,
+  //       courseFile ? courseFile.originalname : undefined
+  //     );
+
+  //     if (updatedCourse) {
+  //       res.status(200).json(updatedCourse);
+  //     } else {
+  //       res.status(404).json({ message: 'Course not found' });
+  //     }
+  //   } catch (error) {
+  //     console.error('Error updating course:', error);
+  //     res.status(500).json({ message: 'Error updating course', error });
+  //   }
+  // };
+
+  deleteCourse = async (req: Request, res: Response): Promise<void> => {
     try {
       const { id } = req.params;
-      const testUpdate = req.body;
-      const files = req.files as { [fieldname: string]: Express.Multer.File[] };
+      const course = await this.testService.deleteCourse(id);
 
-      const testFile = files['test'] ? files['test'][0] : null;
-
-      console.log('Received test update data:', testUpdate);
-      console.log('Received test file:', testFile);
-
-      const updatedTest = await this.testService.updateTest(
-        id,
-        testUpdate,
-        testFile ? testFile.buffer : undefined,
-        testFile ? testFile.originalname : undefined
-      );
-
-      if (updatedTest) {
-        res.status(200).json(updatedTest);
+      if (course) {
+        res.status(200).json(course);
       } else {
-        res.status(404).json({ message: 'Test not found' });
-      }
-    } catch (error) {
-      console.error('Error updating test:', error);
-      res.status(500).json({ message: 'Error updating test', error });
-    }
-  };
-
-  deleteTest = async (req: Request, res: Response): Promise<void> => {
-    try {
-      const { id } = req.params;
-      const test = await this.testService.deleteTest(id);
-
-      if (test) {
-        res.status(200).json(test);
-      } else {
-        res.status(404).json({ message: 'Test not found' });
+        res.status(404).json({ message: 'Course not found' });
       }
     } catch (err) {
-      console.error('Error deleting test:', err);
-      res.status(500).json({ message: 'Error deleting test', error: err });
+      console.error('Error deleting course:', err);
+      res.status(500).json({ message: 'Error deleting course', error: err });
     }
   };
 }
 
-export default TestController;
+export default CourseController;

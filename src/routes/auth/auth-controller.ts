@@ -33,6 +33,54 @@ class AuthController {
     }
   }
 
+  updateCurrentTime = async (req: Request, res: Response): Promise<void> => {
+    try {
+    const { token } = req.body;
+    const result = await this.authService.updateCurrentTime(token);
+    
+    if (!result) {
+      res.status(401).json({ message: 'jwt token is invalid' })
+      return
+    }
+    res.status(200).json(result)
+  } catch (err) {
+    res.status(500).json({ message: 'Error'});
+  }
+  }
+
+  addXp = async (req: Request, res: Response): Promise<void> => {
+    try {
+    const { token } = req.body;
+    const result = await this.authService.addXp(token);
+    
+    if (!result) {
+      res.status(401).json({ message: 'jwt token is invalid' })
+      return
+    }
+
+    res.status(200).json(result)
+  } catch (err) {
+    res.status(500).json({ message: 'Error'});
+  }
+  }
+
+  userInfo = async (req: Request, res: Response): Promise<void> => {
+    try {
+    const { token } = req.body;
+    const result = await this.authService.userInfo(token);
+    
+    if (!result) {
+      res.status(401).json({ message: 'jwt token is invalid' })
+      return
+    }
+
+    res.status(200).json(result)
+  } catch (err) {
+    res.status(500).json({ message: 'Error'});
+  }
+
+  }
+
   refreshToken = async (req: Request, res: Response): Promise<void> => {
     try {
       const { token } = req.body

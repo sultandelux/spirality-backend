@@ -5,6 +5,6 @@ import testRouter from './test/test-router'
 const globalRouter = Router()
 
 globalRouter.use('/auth', authRouter)
-globalRouter.use('/tests',testRouter)
+globalRouter.use('/course',testRouter)
 
 export default globalRouter
