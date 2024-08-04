@@ -1,14 +1,19 @@
 // import TestModel, { ICourse, ITest, ITopic } from './models/Test/Test';
 import { ICourse } from './dtos/Course/CreateCourse.dto';
 import ITest from './dtos/Test/CreateTest.dto';
+import CourseModel from './models/Course/Course';
 import ITopic from './dtos/Topic/CreateTopic.dto';
+import User from '../auth/models/User';
+
 import { uploadFile } from '../../middlewares/s3-middleware';
 import openai from '../../openai';
-import CourseModel from './models/Course/Course';
+
 import UserModel from '../auth/models/User'
 import RefreshTokenModel from '../auth/models/RefreshToken'
-import { prompt } from './prompt/prompt';
-import User from '../auth/models/User';
+
+
+import { promptWithMaterial } from './prompt/prompt.with.material';
+import { promptWithoutMaterial } from './prompt/prompt.without.material';
 
 class TestService {
   private async *processStreamedJsonArray(
@@ -60,77 +65,145 @@ class TestService {
     course: Partial<ICourse>,
     token: string,
     user_interest: string,
-    imageBuffer: Buffer,
+    userInput: string,
+    imageBuffer: any,
     imageFileName: string
   ): Promise<ICourse> {
     try {
-      const bucketName = process.env.AWS_BUCKET_NAME!;
-      const imageKey = `test-images/${Date.now().toString()}-${imageFileName}`;
+      if (imageBuffer !== "" && imageFileName !== ""){
 
-      console.log('Uploading image file to S3:', { bucketName, imageKey });
-      const imageUrl = await uploadFile(bucketName, imageBuffer, imageKey);
-      console.log('Image file uploaded to S3:', imageUrl);
-
-      const base64Image = imageBuffer.toString('base64');
-      const userPrompt = `Мне нравится ${user_interest}`;
-
-      const response = await openai.chat.completions.create({
-        model: 'gpt-4o',
-        messages: [
-          {
-            role: 'system',
-            content: prompt
-          },
-          {
-            role: 'user',
-            content: [
-              { type: 'text', text: userPrompt },
-              { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${base64Image}` } }
-            ]
-          }
-        ],
-        stream: false
-      });
-
-      let messageContent = response.choices[0]?.message?.content || null;
-      console.log('Received message content:', messageContent);
-
-      if (!messageContent) {
-        throw new Error('No content received from OpenAI');
+        const bucketName = process.env.AWS_BUCKET_NAME!;
+        const imageKey = `test-images/${Date.now().toString()}-${imageFileName}`;
+  
+        console.log('Uploading image file to S3:', { bucketName, imageKey });
+        const imageUrl = await uploadFile(bucketName, imageBuffer, imageKey);
+        console.log('Image file uploaded to S3:', imageUrl);
+  
+        const base64Image = imageBuffer.toString('base64');
+        const userPrompt = `
+        я хочу курс о ${userInput}
+        Мне нравится ${user_interest}`;
+        
+        const response = await openai.chat.completions.create({
+          model: 'gpt-4o',
+          messages: [
+            {
+              role: 'system',
+              content: promptWithMaterial
+            },
+            {
+              role: 'user',
+              content: [
+                { type: 'text', text: userPrompt },
+                { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${base64Image}` } }
+              ]
+            }
+          ],
+          stream: false
+        });
+  
+        let messageContent = response.choices[0]?.message?.content || null;
+        console.log('Received message content:', messageContent);
+  
+        if (!messageContent) {
+          throw new Error('No content received from OpenAI');
+        }
+  
+        messageContent = messageContent.replace(/```json|```/g, '').trim();
+        console.log("this is message content with trim!!: ", messageContent);
+        const testDescriptions = JSON.parse(messageContent);
+        console.log("Parsed testDescriptions:", testDescriptions);
+  
+        if (!testDescriptions.course_structure || !Array.isArray(testDescriptions.course_structure.topics) || testDescriptions.course_structure.topics.length === 0) {
+          throw new Error('Invalid structure in the response from OpenAI');
+        }
+  
+        const newCourse = new CourseModel({
+          ...course,
+          headName: testDescriptions.course_structure.head_name,
+          topics: testDescriptions.course_structure.topics,
+          imageUrl: imageUrl
+        });
+  
+        const courseId = newCourse._id;
+        const userJson = await RefreshTokenModel.findOne({ token }).select('user');
+        const userId = (userJson as any).user.toString();
+        
+        // Добавляем ID курса к пользователю
+        
+        await User.findByIdAndUpdate(
+          userId,
+          { $push: { user_courses: courseId } },
+          { new: true }
+        );
+        
+        console.log('Saving test to database:', newCourse);
+        const savedTest = await newCourse.save();
+  
+        return savedTest;
       }
+      else{
+        const userPrompt = `
+        я хочу курс о ${userInput}
+        Мне нравится ${user_interest}`;
 
-      messageContent = messageContent.replace(/```json|```/g, '').trim();
-      console.log("this is message content with trim!!: ", messageContent);
-      const testDescriptions = JSON.parse(messageContent);
-      console.log("Parsed testDescriptions:", testDescriptions);
-
-      if (!testDescriptions.course_structure || !Array.isArray(testDescriptions.course_structure.topics) || testDescriptions.course_structure.topics.length === 0) {
-        throw new Error('Invalid structure in the response from OpenAI');
+        const response = await openai.chat.completions.create({
+          model: 'gpt-4o',
+          messages: [
+            {
+              role: 'system',
+              content: promptWithoutMaterial
+            },
+            {
+              role: 'user',
+              content: [
+                { type: 'text', text: userPrompt }
+              ]
+            }
+          ],
+          stream: false
+        });
+  
+        let messageContent = response.choices[0]?.message?.content || null;
+        console.log('Received message content:', messageContent);
+  
+        if (!messageContent) {
+          throw new Error('No content received from OpenAI');
+        }
+  
+        messageContent = messageContent.replace(/```json|```/g, '').trim();
+        console.log("this is message content with trim!!: ", messageContent);
+        const testDescriptions = JSON.parse(messageContent);
+        console.log("Parsed testDescriptions:", testDescriptions);
+  
+        if (!testDescriptions.course_structure || !Array.isArray(testDescriptions.course_structure.topics) || testDescriptions.course_structure.topics.length === 0) {
+          throw new Error('Invalid structure in the response from OpenAI');
+        }
+  
+        const newCourse = new CourseModel({
+          ...course,
+          headName: testDescriptions.course_structure.head_name,
+          topics: testDescriptions.course_structure.topics,
+          imageUrl: "without-image-url"
+        });
+  
+        const courseId = newCourse._id;
+        const userJson = await RefreshTokenModel.findOne({ token }).select('user');
+        const userId = (userJson as any).user.toString();
+        
+        // Добавляем ID курса к пользователю
+        
+        await User.findByIdAndUpdate(
+          userId,
+          { $push: { user_courses: courseId } },
+          { new: true }
+        );
+        
+        console.log('Saving test to database:', newCourse);
+        const savedTest = await newCourse.save();
+  
+        return savedTest;
       }
-
-      const newCourse = new CourseModel({
-        ...course,
-        headName: testDescriptions.course_structure.head_name,
-        topics: testDescriptions.course_structure.topics,
-        imageUrl: imageUrl
-      });
-
-      const courseId = newCourse._id;
-      const userJson = await RefreshTokenModel.findOne({ token }).select('user');
-      const userId = (userJson as any).user.toString();
-      
-      // Добавляем ID курса к пользователю
-      
-      await User.findByIdAndUpdate(
-        userId,
-        { $push: { user_courses: courseId } },
-        { new: true }
-      );
-      
-      console.log('Saving test to database:', newCourse);
-      const savedTest = await newCourse.save();
-
-      return savedTest;
     } catch (err) {
       console.error('Error creating test:', err);
       throw err;

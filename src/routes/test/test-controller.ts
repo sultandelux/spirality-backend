@@ -11,30 +11,59 @@ class CourseController {
 
   createCourse = async (req: Request, res: Response): Promise<void> => {
     try {
-      const courseData = req.body;
-      const files = req.files as { [fieldname: string]: Express.Multer.File[] };
-      const token = req.body.token;
-      const user_interest = req.body.user_interest;
-  
-      const courseFile = files['material'] ? files['material'][0] : null;
-  
-      if (!courseFile) {
-        res.status(400).json({ message: 'Course file is required' });
-        return;
+      if ((req.files as { [fieldname: string]: Express.Multer.File[] })['material']){
+        console.log("with material");
+        
+        const courseData = req.body;
+        const files = req.files as { [fieldname: string]: Express.Multer.File[] };
+        const token = req.body.token;
+        const userInput = req.body.userInput;
+        const user_interest = req.body.user_interest;
+    
+        const courseFile = files['material'] ? files['material'][0] : null;
+    
+        if (!courseFile || !token) {
+          res.status(400).json({ message: 'Course file is required' });
+          return;
+        }
+    
+        const newCourse = await this.testService.createCourse(
+          courseData,
+          token,
+          user_interest,
+          userInput,
+          courseFile.buffer,
+          courseFile.originalname
+        );
+        
+        res.status(201).json(newCourse);
       }
-  
-      const newCourse = await this.testService.createCourse(
-        courseData,
-        token,
-        user_interest,
-        courseFile.buffer,
-        courseFile.originalname
-      );
-      
-      res.status(201).json(newCourse);
+      else{
+        console.log("without material");
+        const courseData = req.body;
+        const token = req.body.token;
+        const userInput = req.body.userInput;
+        const user_interest = req.body.user_interest;
+    
+        if (!token) {
+          res.status(400).json({ message: 'Course file is required' });
+          return;
+        }
+    
+        const newCourse = await this.testService.createCourse(
+          courseData,
+          token,
+          userInput,
+          user_interest,
+          "",
+          "" 
+        );
+        
+        res.status(201).json(newCourse);
+      }
     } catch (error) {
       console.error('Error creating course:', error);
-      res.status(500).json({ message: 'Error creating course', error });
+      res.status(500).json({ message: 'Error creating course lol', error });
     }
   };
   getCourse = async (req: Request, res: Response): Promise<void> => {
