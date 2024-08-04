@@ -144,8 +144,8 @@ class TestService {
       }
       else{
         const userPrompt = `
-        я хочу курс о ${userInput}
-        Мне нравится ${user_interest}`;
+        я хочу ${userInput} добавь примеры с 
+         ${user_interest} чтобы я мог понять тему`;
 
         const response = await openai.chat.completions.create({
           model: 'gpt-4o',
